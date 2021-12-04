@@ -1,28 +1,37 @@
 import pandas as pd
 import pickle
+import csv
+from copy import deepcopy
+from os.path import isdir
 from os import listdir
-from tqdm import tqdm
 
 def construct_dictionary():
-    words = pd.DataFrame({'api': []})
+    words = []
 
-    tr_path = './dataset/result_train_'
-    te_path = './dataset/result_test_'
-    tr_datas = listdir(tr_path)
-    te_datas = listdir(te_path)
+    tr_path = './dataset/processed_train'
+    te_path = './dataset/processed_test'
 
-    for idx in tqdm(range(len(tr_datas)), ncols=80, desc='[TR data] '):
-        tmp_df = pd.read_feather(f'{tr_path}/{tr_datas[idx]}')
-        tmp_df = tmp_df['api']
-        words = pd.concat([words, tmp_df], axis=0)
-        words.drop_duplicates('api', inplace=True)
+    files, len_files = listdir(tr_path), len(listdir(tr_path))
+    for idx, file in enumerate(files):
+        print(f'train data: {idx+1}/{len_files}')
+        file_csv = open(f'{tr_path}/{file}', newline='')
+        reader = csv.reader(file_csv)
+        next(reader)
 
-    for idx in tqdm(range(len(te_datas)), ncols=80, desc='[TE data] '):
-        tmp_df = pd.read_feather(f'{tr_path}/{te_datas[idx]}')
-        tmp_df = tmp_df['api']
-        words = pd.concat([words, tmp_df], axis=0)
-        words.drop_duplicates('api', inplace=True)
+        for row in reader:
+            if not row[2] in words: words.append(row[2])
 
+    files, len_files = listdir(te_path), len(listdir(te_path))
+    for file in listdir(te_path):
+        print(f'test data: {idx+1}/{len_files}')
+        file_csv = open(f'{te_path}/{file}', newline='')
+        reader = csv.reader(file_csv)
+        next(reader)
+
+        for row in reader:
+            if not row[2] in words: words.append(row[2])
+
+    words = pd.DataFrame(words, columns=['api'])
     words_onehot = pd.get_dummies(words).values.tolist()
     words = words['api'].to_list()
 
@@ -45,42 +54,44 @@ def create_pairs(window_size=2):
     
     tr_path = './dataset/processed_train'
     te_path = './dataset/processed_test'
-    tr_datas = listdir(tr_path)
-    te_datas = listdir(te_path)
 
-    for idx in tqdm(range(len(tr_datas)), ncols=80, desc='[TR data] '):
-        tmp_df = pd.read_feather(f'{tr_path}/{tr_datas[idx]}')
-        tmp_df = tmp_df['api'].to_list()
+    files, len_files = listdir(tr_path), len(listdir(tr_path))
+    for idx, file in enumerate(files):
+        print(f'train file: {idx+1}/{len_files}')
+        file_csv = open(f'{tr_path}/{file}', newline='')
+        reader = csv.reader(file_csv)
+        reader.__next__()
 
-        tmp_df = [word_dict[word] for word in tmp_df]
+        pair_window = [empty_word for _ in range(window_size)]
+        for row in reader:
+            pair_window.append(row)
+            if len(pair_window) == 5:
+                pairs.append(deepcopy(pair_window))
+                pair_window.pop(0)
 
-        for w_idx in range(len(tmp_df)):
-            if w_idx < window_size:
-                empty_count = window_size - w_idx
-                tmp_pair = [empty_word for _ in range(empty_count)] + tmp_df[:window_size+w_idx+1]
-            elif w_idx > len(tmp_df)-window_size-1:
-                empty_count = window_size - (len(tmp_df)-w_idx-1)
-                tmp_pair = tmp_df[w_idx-window_size:] + [empty_word for _ in range(empty_count)]
-            else:
-                tmp_pair = tmp_df[w_idx-window_size:w_idx+window_size+1]
-            pairs.append(tmp_pair)
+        for _ in range(window_size):
+            pair_window.append(empty_word)
+            pairs.append(deepcopy(pair_window))
+            pair_window.pop(0)
 
-    for idx in tqdm(range(len(te_datas)), ncols=80, desc='[TR data] '):
-        tmp_df = pd.read_feather(f'{tr_path}/{te_datas[idx]}')
-        tmp_df = tmp_df['api'].to_list()
+    files, len_files = listdir(te_path), len(listdir(te_path))
+    for idx, file in enumerate(files):
+        print(f'test file: {idx+1}/{len_files}')
+        file_csv = open(f'{te_path}/{file}', newline='')
+        reader = csv.reader(file_csv)
+        reader.__next__()
 
-        tmp_df = [word_dict[word] for word in tmp_df]
+        pair_window = [empty_word for _ in range(window_size)]
+        for row in reader:
+            pair_window.append(row)
+            if len(pair_window) == 5:
+                pairs.append(deepcopy(pair_window))
+                pair_window.pop(0)
 
-        for w_idx in range(len(tmp_df)):
-            if w_idx < window_size:
-                empty_count = window_size - w_idx
-                tmp_pair = [empty_word for _ in range(empty_count)] + tmp_df[:window_size+w_idx+1]
-            elif w_idx > len(tmp_df)-window_size-1:
-                empty_count = window_size - (len(tmp_df)-w_idx-1)
-                tmp_pair = tmp_df[w_idx-window_size:] + [empty_word for _ in range(empty_count)]
-            else:
-                tmp_pair = tmp_df[w_idx-window_size:w_idx+window_size+1]
-            pairs.append(tmp_pair)
+        for _ in range(window_size):
+            pair_window.append(empty_word)
+            pairs.append(deepcopy(pair_window))
+            pair_window.pop(0)
 
     with open(f'./dataset/word_pairs_w{window_size}.pkl', 'wb') as file:
         pickle.dump(pairs, file, pickle.HIGHEST_PROTOCOL)
@@ -89,4 +100,3 @@ def load_pairs(window_size=2):
     with open(f'./dataset/word_pairs_w{window_size}.pkl', 'rb') as file:
         pairs = pickle.load(file)
     return pairs
-
