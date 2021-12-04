@@ -1,13 +1,13 @@
 import pandas as pd
 import pickle
-from os.path import listdir
+from os import listdir
 from tqdm import tqdm
 
 def construct_dictionary():
     words = pd.DataFrame({'api': []})
 
-    tr_path = './dataset/processed_train'
-    te_path = './dataset/processed_test'
+    tr_path = './dataset/result_train_'
+    te_path = './dataset/result_test_'
     tr_datas = listdir(tr_path)
     te_datas = listdir(te_path)
 
@@ -23,7 +23,7 @@ def construct_dictionary():
         words = pd.concat([words, tmp_df], axis=0)
         words.drop_duplicates('api', inplace=True)
 
-    words_onehot = words.get_dummies(words).values.tolist()
+    words_onehot = pd.get_dummies(words).values.tolist()
     words = words['api'].to_list()
 
     word_dict = {}
