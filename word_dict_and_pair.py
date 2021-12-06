@@ -1,8 +1,7 @@
 import pandas as pd
 import pickle
 import csv
-from copy import deepcopy
-from os.path import isdir
+import pyarrow.csv as pcsv
 from os import listdir
 
 def construct_dictionary():
@@ -56,47 +55,59 @@ def create_pairs(window_size=2):
     te_path = './dataset/processed_test'
 
     files, len_files = listdir(tr_path), len(listdir(tr_path))
-    for idx, file in enumerate(files):
-        print(f'train file: {idx+1}/{len_files}')
-        file_csv = open(f'{tr_path}/{file}', newline='')
-        reader = csv.reader(file_csv)
-        reader.__next__()
+    files.sort()
+    for file_idx, file in enumerate(files):
+        print(f'train file: {file_idx+1}/{len_files}')
 
-        pair_window = [empty_word for _ in range(window_size)]
-        for row in reader:
-            pair_window.append(row)
-            if len(pair_window) == 5:
-                pairs.append(deepcopy(pair_window))
-                pair_window.pop(0)
+        word_seq = pcsv.read_csv(f'{tr_path}/{file}').to_pandas()['api'].to_list()
+        seq_len = len(word_seq)
+        if seq_len == 1: continue
 
-        for _ in range(window_size):
-            pair_window.append(empty_word)
-            pairs.append(deepcopy(pair_window))
-            pair_window.pop(0)
+        for word_idx in range(seq_len):
+            max_idx = word_idx+window_size+1
+            min_idx = word_idx-window_size
+            if min_idx < 0 and max_idx > 0:
+                context = word_seq[:word_idx] + word_seq[word_idx+1:]
+            elif min_idx < 0:
+                context = word_seq[:word_idx] + word_seq[word_idx+1:max_idx]
+            elif max_idx > seq_len:
+                context = word_seq[min_idx:word_idx] + word_seq[word_idx+1:]
+            tmp = {
+                'center': word_seq[word_idx],
+                'context': context
+            }
+            pairs.append(tmp)
+
+        if (file_idx+1)%1000 == 0:
+            with open(f'./dataset/word_pairs_w{window_size}/train_pairs_{file_idx-999}-{file_idx}', 'wb') as file:
+                pickle.dump(pairs, file, pickle.HIGHEST_PROTOCOL)
+                pairs.clear()
 
     files, len_files = listdir(te_path), len(listdir(te_path))
-    for idx, file in enumerate(files):
-        print(f'test file: {idx+1}/{len_files}')
-        file_csv = open(f'{te_path}/{file}', newline='')
-        reader = csv.reader(file_csv)
-        reader.__next__()
+    files.sort()
+    for file_idx, file in enumerate(files):
+        print(f'test file: {file_idx+1}/{len_files}')
 
-        pair_window = [empty_word for _ in range(window_size)]
-        for row in reader:
-            pair_window.append(row)
-            if len(pair_window) == 5:
-                pairs.append(deepcopy(pair_window))
-                pair_window.pop(0)
+        word_seq = pcsv.read_csv(f'{te_path}/{file}').to_pandas()['api'].to_list()
+        seq_len = len(word_seq)
+        if seq_len == 1: continue
 
-        for _ in range(window_size):
-            pair_window.append(empty_word)
-            pairs.append(deepcopy(pair_window))
-            pair_window.pop(0)
+        for word_idx in range(seq_len):
+            max_idx = word_idx+window_size+1
+            min_idx = word_idx-window_size
+            if min_idx < 0 and max_idx > 0:
+                context = word_seq[:word_idx] + word_seq[word_idx+1:]
+            elif min_idx < 0:
+                context = word_seq[:word_idx] + word_seq[word_idx+1:max_idx]
+            elif max_idx > seq_len:
+                context = word_seq[min_idx:word_idx] + word_seq[word_idx+1:]
+            tmp = {
+                'center': word_seq[word_idx],
+                'context': context
+            }
+            pairs.append(tmp)
 
-    with open(f'./dataset/word_pairs_w{window_size}.pkl', 'wb') as file:
-        pickle.dump(pairs, file, pickle.HIGHEST_PROTOCOL)
-
-def load_pairs(window_size=2):
-    with open(f'./dataset/word_pairs_w{window_size}.pkl', 'rb') as file:
-        pairs = pickle.load(file)
-    return pairs
+        if (file_idx+1)%1000 == 0:
+            with open(f'./dataset/word_pairs_w{window_size}/test_pairs_{file_idx-999}-{file_idx}', 'wb') as file:
+                pickle.dump(pairs, file, pickle.HIGHEST_PROTOCOL)
+                pairs.clear()
