@@ -3,14 +3,15 @@ import csv
 import os
 import pandas as pd
 
-path = f'./dataset/result_train'
-save_path = f'./dataset/processed_train'
+path = f'./dataset/result_validation'
+save_path = f'./dataset/processed_validation'
 
 calls_list = []
 count = 0
 
-for idx in range(8, 9):
-    iter_path = f'{path}_{idx}'
+for idx in range(1, 2):
+    # iter_path = f'{path}_{idx}'
+    iter_path = path
     if not os.path.isdir(iter_path): continue
 
     data_list = os.listdir(iter_path)
