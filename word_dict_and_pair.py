@@ -3,7 +3,9 @@ import pickle
 import csv
 import operator
 import pyarrow.csv as pcsv
+from pyarrow import Table
 from os import listdir
+from tqdm import tqdm
 
 def construct_dictionary():
     words = []
@@ -113,3 +115,19 @@ def create_pairs(window_size=2):
             with open(f'./dataset/word_pairs_w{window_size}/test_pairs_{file_idx-999}-{file_idx}', 'wb') as file:
                 pickle.dump(pairs, file, pickle.HIGHEST_PROTOCOL)
                 pairs.clear()
+
+def encode_onehot():
+    tr_path = './dataset/processed_train'
+    te_path = './dataset/processed_test'
+    word_dict = load_dictionary()
+
+    file_list = listdir(tr_path)
+    for file in tqdm(file_list):
+        csv_file = pcsv.read_csv(f'{tr_path}/{file}').to_pandas()['api'].to_list()
+
+        if len(csv_file)==0: continue
+        for word_idx in range(len(csv_file)):
+            csv_file[word_idx] = word_dict[csv_file[word_idx]]
+        csv_file = {'api':csv_file}
+        csv_file = Table.from_pydict(csv_file)
+        pcsv.write_csv(csv_file, f'{tr_path}_onehot/{file}')
