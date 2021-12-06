@@ -1,6 +1,7 @@
 import pandas as pd
 import pickle
 import csv
+import operator
 import pyarrow.csv as pcsv
 from os import listdir
 
@@ -44,6 +45,7 @@ def construct_dictionary():
 def load_dictionary():
     with open('./dataset/word_dict.pkl', 'rb') as file:
         word_dict = pickle.load(file)
+    word_dict = dict(sorted(word_dict.items(), key=operator.itemgetter(1)))
     return word_dict
 
 def create_pairs(window_size=2):

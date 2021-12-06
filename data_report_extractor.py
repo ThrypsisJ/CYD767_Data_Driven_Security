@@ -9,8 +9,7 @@ save_path = f'./dataset/processed_train'
 calls_list = []
 count = 0
 
-
-for idx in range(5, 11):
+for idx in range(8, 9):
     iter_path = f'{path}_{idx}'
     if not os.path.isdir(iter_path): continue
 
@@ -27,6 +26,7 @@ for idx in range(5, 11):
 
         if 'behavior' in report_file.keys():
             vir_name = report_file['target']['file']['name']
+            if os.path.exists(f'{save_path}/{vir_name}.csv'): continue
             csv_file = open(f'{save_path}/{vir_name}.csv', 'w', newline='')
             writer = csv.writer(csv_file)
             writer.writerow(['process_path', 'category', 'api', 'time'])
